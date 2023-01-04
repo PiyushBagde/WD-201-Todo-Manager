@@ -63,12 +63,12 @@ module.exports = (sequelize, DataTypes) => {
         },
       });
     }
-
     markAsCompleted() {
       return this.update({ completed: true });
     }
-    setCompletionStatus(bool) {
-      return this.update({ completed: bool });
+
+    setCompletionStatus(status) {
+      return this.update({ completed: status });
     }
   }
 
