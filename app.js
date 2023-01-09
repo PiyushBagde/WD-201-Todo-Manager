@@ -5,41 +5,107 @@
 const express = require("express");
 var csrf = require("tiny-csrf");
 const app = express();
-const { Todo, User } = require("./models");
 const bodyParser = require("body-parser");
 var cookieParser = require("cookie-parser");
 const path = require("path");
 // eslint-disable-next-line no-unused-vars
 const { response } = require("express");
-app.use(bodyParser.json());
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser("shh! some secret string"));
 app.use(csrf("this_should_be_32_character_long", ["POST", "PUT", "DELETE"]));
 
+app.use(bodyParser.json());
+
 app.set("view engine", "ejs");
+
+const passport = require("passport");
+// eslint-disable-next-line no-unused-vars
+const connectEnsureLogin = require("connect-ensure-login");
+const session = require("express-session");
+const LocalStratergy = require("passport-local");
+
+app.use(
+  session({
+    secret: "my-super-secret-key-2837428907583420",
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(
+  new LocalStratergy(
+    {
+      usernameField: "email",
+      passwordField: "password",
+    },
+    (username, password, done) => {
+      User.findOne({ where: { email: username, password: password } })
+        .then((user) => {
+          return done(null, user);
+        })
+        .catch((error) => {
+          return error;
+        });
+    }
+  )
+);
+
+passport.serializeUser((user, done) => {
+  console.log("Serializing user in session", user.id);
+  done(null, user.id);
+});
+
+passport.deserializeUser((id, done) => {
+  User.findByPk(id)
+    .then((user) => {
+      done(null, user);
+    })
+    .catch((error) => {
+      done(error, null);
+    });
+});
+
+const { Todo, User } = require("./models");
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/", async (request, response) => {
-  const overdue = await Todo.overdue();
-  const dueToday = await Todo.dueToday();
-  const dueLater = await Todo.dueLater();
-  if (request.accepts("html")) {
-    response.render("index", {
-      title: "Todo application",
-      overdue,
-      dueToday,
-      dueLater,
-      csrfToken: request.csrfToken(),
-    });
-  } else {
-    response.json({
-      overdue,
-      dueToday,
-      dueLater,
-    });
-  }
+app.get("/", async function (request, response) {
+  response.render("index", {
+    title: "Todo Application",
+    csrfToken: request.csrfToken(),
+  });
 });
+
+app.get(
+  "/todos",
+  connectEnsureLogin.ensureLoggedIn(),
+  async (request, response) => {
+    const overdue = await Todo.overdue();
+    const dueToday = await Todo.dueToday();
+    const dueLater = await Todo.dueLater();
+    if (request.accepts("html")) {
+      response.render("todos", {
+        title: "Todo application",
+        overdue,
+        dueToday,
+        dueLater,
+        csrfToken: request.csrfToken(),
+      });
+    } else {
+      response.json({
+        overdue,
+        dueToday,
+        dueLater,
+      });
+    }
+  }
+);
 
 app.get("/signup", (request, response) => {
   response.render("signup", {
@@ -49,19 +115,42 @@ app.get("/signup", (request, response) => {
 });
 
 app.post("/users", async (request, response) => {
-  console.log("Firstname", request.body.firstName);
+  const hashedPwd = await bcrypt.hash(request.body.password, saltRounds);
+  console.log(hashedPwd);
   try {
-    // eslint-disable-next-line no-unused-vars
     const user = await User.create({
       firstName: request.body.firstName,
       lastName: request.body.lastName,
       email: request.body.email,
-      password: request.body.password,
+      password: hashedPwd,
     });
-    response.redirect("/");
+    request.login(user, (err) => {
+      if (err) {
+        console.log(err);
+      }
+      response.redirect("/todos");
+    });
   } catch (error) {
     console.log(error);
   }
+});
+
+app.post(
+  "/session",
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  (request, response) => {
+    response.redirect("/todos");
+  }
+);
+
+app.get("/login", (request, response) => {
+  response.render("login", {
+    title: "Login",
+    csrfToken: request.csrfToken(),
+  });
 });
 
 app.get("/todos", async function (request, response) {
