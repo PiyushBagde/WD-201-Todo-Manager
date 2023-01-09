@@ -45,12 +45,17 @@ passport.use(
       passwordField: "password",
     },
     (username, password, done) => {
-      User.findOne({ where: { email: username, password: password } })
-        .then((user) => {
-          return done(null, user);
+      User.findOne({ where: { email: username } })
+        .then(async (user) => {
+          const result = await bcrypt.compare(password, user.password);
+          if (result) {
+            return done(null, user);
+          } else {
+            return done("Invalid password");
+          }
         })
-        .catch((error) => {
-          return error;
+        .catch(() => {
+          return done("Invalid Email-ID");
         });
     }
   )
