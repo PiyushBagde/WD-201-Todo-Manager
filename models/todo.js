@@ -14,55 +14,68 @@ module.exports = (sequelize, DataTypes) => {
       });
     }
 
-    static addTodo({ title, dueDate }) {
-      return this.create({ title: title, dueDate: dueDate, completed: false });
+    static addTodo({ title, dueDate, userId }) {
+      return this.create({
+        title: title,
+        dueDate: dueDate,
+        completed: false,
+        userId,
+      });
     }
 
     static getTodos() {
       return this.findAll();
     }
-    static dueLater() {
+    static dueLater(userId) {
       return this.findAll({
         where: {
           dueDate: {
             [Op.gt]: new Date().toLocaleDateString("en-CA"),
           },
+          userId,
+          completed: false,
         },
       });
     }
 
-    static dueToday() {
+    static dueToday(userId) {
       return this.findAll({
         where: {
           dueDate: {
             [Op.eq]: new Date().toLocaleDateString("en-CA"),
           },
+          userId,
+          completed: false,
         },
       });
     }
 
-    static overdue() {
+    static overdue(userId) {
       return this.findAll({
         where: {
           dueDate: {
             [Op.lt]: new Date().toLocaleDateString("en-CA"),
           },
+          userId,
+          completed: false,
         },
       });
     }
 
-    static async remove(id) {
+    static async remove(id, userId) {
       return this.destroy({
         where: {
           id,
+          userId,
         },
       });
     }
 
-    static completedItems() {
+    static completed(userId) {
       return this.findAll({
         where: {
           completed: true,
+          userId,
         },
       });
     }
@@ -70,8 +83,8 @@ module.exports = (sequelize, DataTypes) => {
     markAsCompleted() {
       return this.update({ completed: true });
     }
-    setCompletionStatus(bool) {
-      return this.update({ completed: bool });
+    setCompletionStatus(completed) {
+      return this.update({ completed });
     }
   }
 

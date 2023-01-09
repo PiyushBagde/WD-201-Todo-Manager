@@ -90,15 +90,18 @@ app.get(
   "/todos",
   connectEnsureLogin.ensureLoggedIn(),
   async (request, response) => {
-    const overdue = await Todo.overdue();
-    const dueToday = await Todo.dueToday();
-    const dueLater = await Todo.dueLater();
+    const loggedInUser = request.user.id;
+    const overdue = await Todo.overdue(loggedInUser);
+    const dueToday = await Todo.dueToday(loggedInUser);
+    const dueLater = await Todo.dueLater(loggedInUser);
+    const completed = await Todo.completed(loggedInUser);
     if (request.accepts("html")) {
       response.render("todos", {
         title: "Todo application",
         overdue,
         dueToday,
         dueLater,
+        completed,
         csrfToken: request.csrfToken(),
       });
     } else {
@@ -106,6 +109,7 @@ app.get(
         overdue,
         dueToday,
         dueLater,
+        completed,
       });
     }
   }
@@ -195,12 +199,14 @@ app.post(
   connectEnsureLogin.ensureLoggedIn(),
   async function (request, response) {
     console.log("Creating a todo", request.body);
+    console.log(request.user);
     try {
       await Todo.addTodo({
         title: request.body.title,
         dueDate: request.body.dueDate,
+        userId: request.user.id,
       });
-      return response.redirect("/");
+      return response.redirect("/todos");
     } catch (error) {
       console.log(error);
       return response.status(422).json(error);
@@ -212,7 +218,6 @@ app.put(
   "/todos/:id",
   connectEnsureLogin.ensureLoggedIn(),
   async function (request, response) {
-    console.log("we have to update a todo with ID:", request.params.id);
     const todo = await Todo.findByPk(request.params.id);
     try {
       const updatedTodo = await todo.setCompletionStatus(
@@ -229,12 +234,13 @@ app.put(
 app.delete(
   "/todos/:id",
   connectEnsureLogin.ensureLoggedIn(),
-  async (request, response) => {
-    console.log("delete a Todo with ID: ", request.params.id);
+  async function (request, response) {
+    console.log("We have to delete a Todo with ID: ", request.params.id);
     try {
-      await Todo.remove(request.params.id);
-      return response.json({ success: true });
+      const res = await Todo.remove(request.params.id, request.user.id);
+      return response.json({ success: res === 1 });
     } catch (error) {
+      console.log(error);
       return response.status(422).json(error);
     }
   }
