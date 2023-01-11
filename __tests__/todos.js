@@ -166,8 +166,7 @@ describe("Todo Application", function () {
     });
     const parsedDeleteResponse = JSON.parse(deleteResponse.text).success;
     expect(parsedDeleteResponse).toBe(true);
-    //testing for response-false
-    //as above id is deleted it does not exist
+
     res = await agent.get("/todos");
     csrfToken = extractCsrfToken(res);
 
