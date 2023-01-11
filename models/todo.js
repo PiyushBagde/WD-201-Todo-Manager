@@ -50,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
       });
     }
 
-    static overdue(userId) {
+    static overDue(userId) {
       return this.findAll({
         where: {
           dueDate: {
