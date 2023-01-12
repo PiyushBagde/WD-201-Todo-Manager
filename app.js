@@ -5,6 +5,10 @@ const app = express();
 const { Todo, User } = require("./models");
 const bodyParser = require("body-parser");
 var cookieParser = require("cookie-parser");
+var passport = require("passport");
+const connectEnsureLogin = require("connect-ensure-login");
+const session = require("express-session");
+const LocalStrategy = require("passport-local");
 // eslint-disable-next-line no-unused-vars
 const todo = require("./models/todo");
 app.use(bodyParser.json());
@@ -13,12 +17,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser("Some secret string"));
 app.use(csrf("this_should_be_32_character_long", ["POST", "PUT", "DELETE"]));
 
-const passport = require("passport");
-const connectEnsureLogin = require("connect-ensure-login");
-const session = require("express-session");
 const flash = require("connect-flash");
 app.set("views", path.join(__dirname, "views"));
-const LocalStrategy = require("passport-local");
 const bcrypt = require("bcrypt");
 
 const saltRounds = 10;
